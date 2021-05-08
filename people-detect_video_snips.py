@@ -5,10 +5,7 @@ from argparse import ArgumentParser
 import os
 import sys
 from datetime import datetime
-from twilio.rest import Client  # used for texting if you'd like, flag is optional
-import smtplib, ssl # for sending email alerts
-from email.message import EmailMessage
-import imghdr
+from tqdm import tqdm
 
 
 # these will need to be fleshed out to not miss any formats
@@ -22,14 +19,14 @@ ERROR_ALERT = False
 #used for alerts. True if human found once
 HUMAN_DETECTED_ALERT = False
 
-def process_frame_list(frame_list,frame_interval,frame_count,fps,time_padding=10):
+def process_frame_list(frame_list,frame_range,frame_count,fps,time_padding=10):
     processed_frame_list = []
     start_frame_ind = 0
     end_frame_ind = 0
     ind = 0
     frame_padding = fps*time_padding
     while end_frame_ind+1 < len(frame_list):
-        if frame_list[end_frame_ind+1] - frame_list[end_frame_ind] == frame_interval:
+        if frame_list[end_frame_ind+1] - frame_list[end_frame_ind] == frame_range:
             end_frame_ind += 1
         else:
             start_frame= max(frame_list[start_frame_ind]-frame_padding,0)
@@ -47,31 +44,28 @@ def process_frame_list(frame_list,frame_interval,frame_count,fps,time_padding=10
 
     
 
-def snip_video_segments_from_frame_list(frame_list,video_file_name,frame_count,save_directory,frame_interval,time_padding=10):
+def snip_video_segments_from_frame_list(frame_list,video_file_name,frame_count,save_directory,frame_range,time_padding=10):
     print("frame_list",frame_list)
     
     vid = cv2.VideoCapture(video_file_name)
     frame_width = int( vid.get(cv2.CAP_PROP_FRAME_WIDTH))
     fps = int( vid.get(cv2.CAP_PROP_FPS))
     frame_height =int( vid.get( cv2.CAP_PROP_FRAME_HEIGHT))
-    processed_frame_list = process_frame_list(frame_list,frame_interval,frame_count,fps,time_padding)
-    print("frame_list",frame_list)
-    print("processed_frame_list",processed_frame_list)
-    
-    # height,width,c
+    processed_frame_list = process_frame_list(frame_list,frame_range,frame_count,fps,time_padding)
+
     video_count = 1
     frame_count = 0
+    frame_range_count = 1
+    total_frame_range_count = len(processed_frame_list)
     video_file_path = os.path.join(save_directory,'processed_video.avi')
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
 
     out = cv2.VideoWriter(f'{video_file_path}', fourcc, fps, (frame_width, frame_height)) 
-    print("processed_frame_list",processed_frame_list)
-    for frame_interval in processed_frame_list:
-        # video_file_path = os.path.join(save_directory,'video_'+str(video_count)+'.avi')
-        # fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        
-        # out = cv2.VideoWriter(video_file_path, fourcc, 20.0,(1280,720))
-        for frame_number in range(frame_interval[0],frame_interval[1]+1):
+    print(f"Processed Frame Ranges {processed_frame_list}")
+
+    for frame_range in processed_frame_list:
+        print(f"Processing frame range {frame_range_count} of {total_frame_range_count}")
+        for frame_number in tqdm(range(frame_range[0],frame_range[1]+1),"Creating video snippet from frame range found to contain humans"):
             vid.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
             _ , frame = vid.read()
             try:
@@ -79,18 +73,17 @@ def snip_video_segments_from_frame_list(frame_list,video_file_name,frame_count,s
             except Exception as e:
                 print(f"Error {e}, unable to read frame number {frame_number}")
                 continue
-            print("image height,width", height,width)
             out.write(frame)
+        frame_range_count +=1
     out.release()
     print("video saved to",video_file_path)
-        # video_count+=1
 
         
     
 
 # function takes a file name(full path), checks that file for human shaped objects
 # saves the frames with people detected into directory named 'save_directory'
-def humanChecker(video_file_name, save_directory, yolo='yolov4', continuous=False, nth_frame=20, confidence=.3, gpu=False):
+def humanChecker(video_file_name, save_directory, yolo='yolov4', continuous=False, nth_frame=20, confidence=0.65, gpu=False,time_padding=10):
     # save_directory_2 = os.path.join()
     # for modifying our global variarble VALID_FILE
     global VALID_FILE_ALERT
@@ -140,7 +133,7 @@ def humanChecker(video_file_name, save_directory, yolo='yolov4', continuous=Fals
         # Increase 'nth_frame' to examine fewer frames and increase speed. Might reduce accuracy though.
         # Note: we can't use frame_count by itself because it's an approximation and could lead to errors
         frame_number_list = []
-        for frame_number in range(1, frame_count - 6, nth_frame):
+        for frame_number in tqdm(range(1, frame_count - 6, nth_frame),desc="Detecting people in frames using YOLO"):
 
             # if not dealing with an image
             if os.path.splitext(video_file_name)[1] not in IMG_EXTENSIONS:
@@ -163,12 +156,13 @@ def humanChecker(video_file_name, save_directory, yolo='yolov4', continuous=Fals
                 # create image with bboxes showing people and then save
                 marked_frame = cvlib.object_detection.draw_bbox(frame, bbox, labels, conf, write_conf=True)
                 save_file_name = os.path.basename(os.path.splitext(video_file_name)[0]) + '-' + str(person_detection_counter) + '.jpeg'
-                cv2.imwrite(save_directory + '/' + save_file_name , marked_frame)
+                cv2.imwrite(save_directory + '/snapshots/' + save_file_name , marked_frame)
                 frame_number_list.append(frame_number)
                 if continuous is False:
                     break
-    if is_valid:
-        snip_video_segments_from_frame_list(frame_number_list,video_file_name,frame_count,save_directory,nth_frame)
+
+    if is_valid and person_detection_counter > 0:
+        snip_video_segments_from_frame_list(frame_number_list,video_file_name,frame_count,save_directory,nth_frame,time_padding=time_padding)
     return is_human_found, analyze_error
 
 
@@ -190,47 +184,6 @@ def getListOfFiles(dir_name):
     return all_files
 
 
-def twilioAlertSender(TWILIO_TOKEN, TWILIO_SID, TWILIO_FROM, TWILIO_TO):
-    # if people are detected and --twilio flag has been set, send a text
-    client = Client(TWILIO_SID, TWILIO_TOKEN)
-    client.messages.create(body=f"Human Detected: {HUMAN_DETECTED_ALERT} \n Valid Files Examined: {VALID_FILE_ALERT} \n Errors Detected: {ERROR_ALERT}", from_=TWILIO_FROM, to=TWILIO_TO)
-
-
-
-# def emailAlertSender(save_directory, SENDER_EMAIL, SENDER_PASS, RECEIVER_EMAIL):
-
-#     port = 465  # For SSL
-#     smtp_server = "smtp.gmail.com"
-
-#     # set up our message body as contents of log file, if any
-#     with open(save_directory + '/' + save_directory + '.txt') as f:
-#         msg = EmailMessage()
-#         msg.set_content(f.read())
-
-#     msg['From'] = SENDER_EMAIL
-#     msg['To'] = RECEIVER_EMAIL
-#     if HUMAN_DETECTED_ALERT is True:
-#         msg['Subject'] = 'Intruder Alert'
-
-#     elif HUMAN_DETECTED_ALERT is False and VALID_FILE_ALERT is True:
-#         msg['Subject'] = 'All Clear'
-
-#     else:
-#         msg['Subject'] = 'No Valid Files Examined'
-
-#     list_of_files = os.listdir(save_directory)
-#     # add our attachments, ignoring the .txt file
-#     for image_file_name in list_of_files:
-#         if image_file_name[-3:] != 'txt':
-#             with open(save_directory + '/' + image_file_name, 'rb') as image:
-#                 img_data = image.read()
-#             msg.add_attachment(img_data, maintype='image', subtype=imghdr.what(None, img_data), filename=image_file_name)
-
-#     context = ssl.create_default_context()
-#     with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
-#         server.login(SENDER_EMAIL, SENDER_PASS)
-#         server.send_message(msg)
-
 
 #############################################################################################################################
 if __name__ == "__main__":
@@ -238,13 +191,12 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('-d', '--directory', default='', help='Path to video folder')
     parser.add_argument('-f', default='', help='Used to select an individual file')
-    parser.add_argument('--twilio', action='store_true', help='Flag to use Twilio text notification')
-    parser.add_argument('--email', action='store_true', help='Flag to use email notification')
     parser.add_argument('--tiny_yolo', action='store_true', help='Flag to indicate using YoloV4-tiny model instead of the full one. Will be faster but less accurate.')
     parser.add_argument('--continuous', action='store_true', help='This option will go through entire video file and save all frames with people. Default behavior is to stop after first person sighting.')
     parser.add_argument('--confidence', type=int, choices=range(1,100), default=65, help='Input a value between 1-99. This represents the percent confidence you require for a hit. Default is 65')
     parser.add_argument('--frames', type=int, default=10, help='Only examine every nth frame. Default is 10')
     parser.add_argument('--gpu', action='store_true', help='Attempt to run on GPU instead of CPU. Requires Open CV compiled with CUDA enables and Nvidia drivers set up correctly.')
+    parser.add_argument('--time_padding',type=int,default=10, help='number of extra seconds of footage to include on either side of an extracted video clip')
 
     args = vars(parser.parse_args())
 
@@ -263,92 +215,58 @@ if __name__ == "__main__":
         print('Must select either -f or -d but can''t do both')
         sys.exit(1)
 
-    # if the --twilio flag is used, this will look for environment variables holding this needed information
-    # you can hardcode this information here if you'd like though. It's less secure but if you're the only one
-    # using this script it's probably fine
-    # if args['twilio']:
-    #     try:
-    #         TWILIO_TOKEN = os.environ['TWILIO_TOKEN']
-    #         TWILIO_SID = os.environ['TWILIO_SID']
-    #         TWILIO_FROM = os.environ['TWILIO_FROM']
-    #         TWILIO_TO = os.environ['TWILIO_TO']
-    #     except:
-    #         print('Something went wrong with the Twilio variables. Either set your environment variables or hardcode values in to script: TWILIO_TOKEN, TWILIO_SID, TWILIO_FROM, TWILIO_TO')
-    #         sys.exit(1)
-
-    # if the --email flag is used, this will look for environment variables holding this needed information
-    # you can hardcode this information here if you'd like though. It's less secure but if you're the only one
-    # using this script it's probably fine
-    if args['email']:
-        try:
-            SENDER_EMAIL = os.environ['ALERT_SENDER_EMAIL']
-            SENDER_PASS = os.environ['ALERT_SENDER_PASS']
-            RECEIVER_EMAIL = os.environ['ALERT_RECEIVER_EMAIL']
-        except:
-            print('Something went wrong with Email variables. Either set your environment variables or hardcode values in to script')
-            sys.exit(1)
 
     every_nth_frame = args['frames']
+    
     confidence_percent = args['confidence'] / 100
     
     gpu_flag = False
     if args['gpu']:
         gpu_flag = True
+    
+    time_padding = args['time_padding']
 
-    # create a directory to hold snapshots and log file
-    time_stamp = datetime.now().strftime('%m%d%Y-%H:%M:%S')
-    os.mkdir(time_stamp)
 
     print('Beginning Detection')
-    print(f'Directory {time_stamp} has been created')
-    print(f"Email notifications set to {args['email']}. Text notification set to {args['twilio']}.")
     print(f"Confidence threshold set to {args['confidence']}%")
     print(f'Examining every {every_nth_frame} frames.')
     print(f"Continous examination is set to {args['continuous']}")
     print(f"GPU is set to {args['gpu']}")
     print('\n\n')
-    print(datetime.now().strftime('%m%d%Y-%H:%M:%S'))
 
-    # open a log file and loop over all our video files
-    with open(time_stamp + '/' + time_stamp +'.txt', 'w') as log_file:
-        if args['f'] == '':
-            video_directory_list = getListOfFiles(args['directory'] + '/')
-        else:
-            video_directory_list = [args['f']]
+    if args['f'] == '':
+        video_directory_list = getListOfFiles(args['directory'] + '/')
+    else:
+        video_directory_list = [args['f']]
 
-        # what video we are on
-        working_on_counter = 1
+    # what video we are on
+    working_on_counter = 1
 
-        for video_file in video_directory_list:
-            print(f'Examining {video_file}: {working_on_counter} of {len(video_directory_list)}: {int((working_on_counter/len(video_directory_list)*100))}%    ', end='')
-            custom_save_dir = video_file.split('/')[-1]+'_segments'
-            if not os.path.exists(custom_save_dir):
-                os.mkdir(custom_save_dir)
-            else:
-                print("skipping video as directory already exists")
-                working_on_counter +=1
-                continue
-            # check for people
-            human_detected, error_detected =  humanChecker(str(video_file), custom_save_dir, yolo=yolo_string, nth_frame=every_nth_frame, confidence=confidence_percent, continuous=args['continuous'], gpu=gpu_flag)
+    for video_file in video_directory_list:
+        print(f'Examining {video_file}: {working_on_counter} of {len(video_directory_list)}: {int((working_on_counter/len(video_directory_list)*100))}%    ', end='')
+        custom_save_dir = f"../output/{video_file.split('/')[-1]}_processed"
+        if not os.path.exists(custom_save_dir):
+            if not os.path.exists("../output"):
+                os.mkdir("../output")
                 
-            if human_detected:    
-                HUMAN_DETECTED_ALERT = True
-                print(f'Human detected in {video_file}')
-                log_file.write(f'{video_file} \n' )
+            os.mkdir(custom_save_dir)
+            os.mkdir(f"{custom_save_dir}/snapshots")
+        else:
+            print("skipping video as directory already exists")
+            working_on_counter +=1
+            continue
+        # check for people
+        human_detected, error_detected =  humanChecker(str(video_file), custom_save_dir, yolo=yolo_string, nth_frame=every_nth_frame, confidence=confidence_percent, continuous=args['continuous'], gpu=gpu_flag,time_padding=time_padding)
             
-            if error_detected:
-                ERROR_ALERT = True
-                print(f'\nError in analyzing {video_file}')
-                log_file.write(f'Error in analyzing {video_file} \n' )
+        if human_detected:    
+            HUMAN_DETECTED_ALERT = True
+            print(f'At least one Human detected in {video_file}')
+        
+        if error_detected:
+            ERROR_ALERT = True
+            print(f'\nError in analyzing {video_file}')
 
-            working_on_counter += 1
+        working_on_counter += 1
 
     if VALID_FILE_ALERT is False:
         print('No valid image or video files were examined')
-
-    # if args['twilio'] is True:
-    #     twilioAlertSender(TWILIO_TOKEN, TWILIO_SID, TWILIO_FROM, TWILIO_TO)
-
-    # if args['email'] is True:
-    #     emailAlertSender(time_stamp, SENDER_EMAIL, SENDER_PASS, RECEIVER_EMAIL)
-    # print(datetime.now().strftime('%m%d%Y-%H:%M:%S'))
