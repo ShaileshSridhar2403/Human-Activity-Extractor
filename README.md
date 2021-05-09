@@ -16,9 +16,9 @@ pip instal tqdm
 When you first run this script it will reach out and download the pre-trained YOLO model as well.
 
 After that it's as simple as:
-* `python people-detect.py -d <path to folder>`
+* `python extract-human-segments.py -d <path to folder>`
 * or
-* `python people-detect.py -f <path to file>`
+* `python extract-human-segments.py -f <path to file>`
 
 There are a number of optional flags outlined below.
 
@@ -36,7 +36,7 @@ The `--time_padding` flag sets the number of seconds of video to be added before
 
 
 
-When run, the script creates a folder `../output`, containing a folder or each video analyzed. Each such folder contains a 'processed_video.avi' , which is a output video containing all human containing segments identified within the video, and a 'snapshots' folder, containing snapshots of frames(.jpeg format) where humans were found, along with a bounding box and confidence score. 
+When run, the script creates a folder `../output`, containing a folder or each video analyzed. Each such folder contains a 'processed_video.avi' , which  contains all human containing segments identified within the video, and a 'snapshots' folder, containing snapshots of frames(.jpeg format) where humans were found, along with a bounding box and confidence score. 
 
 
 
