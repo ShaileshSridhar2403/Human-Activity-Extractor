@@ -1,29 +1,7 @@
 # People-Detector
-High level python script that looks at a folder and tells you which video and/or image files contain people. Saves snapshots of those detections and a log file of all detections. Note: It is recursive. You can scan a folder of folders. This will skip over non-image/video files.
-Check out a demo at: https://youtu.be/q_o1P9zzW1o
+High level python script that looks at a video or folder of videos and for each video,outputs a single video containing only segments containing people. The main motivation behind this was to be able to remove large amounts of non-useful video from CCTV camera footage.
 
-## Update: 
-This script can now take advantage of a CUDA capable gpu. I've put together a how to in a separate blog post: https://humandecoded.io/tensorflow-2-1-and-opencv-4-2-running-on-gpu/
-
-The blog post above was tested on an Ubuntu 18.04 system. You can follow the same instructions for an Ubuntu 20.04 system but will need to have an older version of `gcc` to switch to. See this Linux Config post for an explanation of that:
-https://linuxconfig.org/how-to-switch-between-multiple-gcc-and-g-compiler-versions-on-ubuntu-20-04-lts-focal-fossa
-
-## Why I made this script?
-I wrote this script after having my backyard shed broken in to as well as the car in my driveway. After each break in I placed a motion activated camera in the respective area. My goal here is not to catch people "in the act" but instead be alerted that people have been creeping around my backyard or checking the cars in my driveway for unlocked doors. There is way too much natural motion in these areas for me to review footage every time the camera detects motion. This script will automate the "busy work" and let me know what clips I might want to look in to.
- 
-My hope hear is to catch a pattern of behavior. For example, "Every Sunday night someone tries the car doors in my driveway"
-
-## How do I use this script?
-I have an old Imac I use as a dvr for my camera system. Every morning I have a shell script that does the following:
-- use rsync to pull in all new footage from my dvr(imac) on to my main home machine
-- filter out any unwanted footage based off camera location and time stamp, leaving me with only my backyard and driveway night footage.
-- run this script on that footage, sending me a text and email alert if it detects a person shaped object in any of that footage along with screenshots of the "people" it detects.
-
-## Requirements and getting started:
-
-This script relies on the work done on cvlib: https://github.com/arunponnusamy/cvlib
-cvlib offers us some high level methods to detect common objects within photos or videos without any experience with machine learning.
-
+Huge thanks to humandecoded, whose repository (https://github.com/humandecoded/People-Detector) provided the base structure and code for this one.
 
 ## Requirements 
 * First, activate your Python 3.7 virtual env.  Then:
@@ -32,7 +10,7 @@ pip install --upgrade pip
 pip install tensorflow
 pip install cvlib
 pip install opencv-python
-pip install twilio
+pip instal tqdm
 ```
 
 When you first run this script it will reach out and download the pre-trained YOLO model as well.
@@ -45,27 +23,21 @@ After that it's as simple as:
 There are a number of optional flags outlined below.
 
 The default ML model is 'yolov4'. This model is big and CPU intensive. The `--tiny_yolo` flag will give you the smaller model that is faster but less accurate.
+In my experience tiny yolo is generally adequate,as the code pads all human containing segments with a small amount of extra video, generally making up for any missed detections. Experimentation in the user's specific conditions is advised, however.
 
-The `--twilio` flag allows you to send text alerts but requires you to have set up a twilio account and have an SID, a Token, a Twilio number and a verified number to send to. You can learn more about this here: https://www.twilio.com/docs/sms/quickstart/python. These values can either be hardcoded in to the script or referenced as environment variables. Examine the script for where this happens.
-
-The `--email` option requires you to have a gmail account set to allow "less secure" sign ins. I recommend setting up a separate account you will only use for sending yourself logs. You can learn more about this here:
-https://realpython.com/python-send-email/#option-1-setting-up-a-gmail-account-for-development
-You can hard code your credentials in to the script but I recommend referencing env variables instead. Print out of log file is placed in body. Screenshots of detected humans are attached to the email.
-
-The `--continuous` flag will examine the entire clip for human detections. The default behavior is to stop after first detection. 
 
 The `--frames n`  flag sets the program to examine every `n`th frame. The default is every 10th frame.
 
-The `--confidence n`  flag will adjust the confidence threshold that trips a detection alert to `n`. The default is 65.
+The `--confidence n`  flag will adjust the confidence threshold for YOLO that trips a detection alert to `n`. The default is 65.
+
+The `--gpu` flag tells the code whether to use the gpu configured on the system. If no gpu is found, falls back to cpu.
+
+The `--time_padding` flag sets the number of seconds of video to be added before and after a human detected segment
 
 
-Functionally speaking, the email and twilio options only make sense if you intend to use this script in an automated workflow. See above for how I use it. 
 
-When ran, this script creates a folder named after the current date and time. As it finds frames with people in them it will save a jpeg of that frame in to the folder. It includes a border box around common objects as well as a confidence percentage. This gives you a good idea of what it thinks are people and how confident it is. At the end it will also save a log file of all video files containing people. 
+When run, the script creates a folder `../output`, containing a folder or each video analyzed. Each such folder contains a 'processed_video.avi' , which is a output video containing all human containing segments identified within the video, and a 'snapshots' folder, containing snapshots of frames(.jpeg format) where humans were found, along with a bounding box and confidence score. 
 
-I recommend testing in your selected environment(s) and time(s) of day to make sure it will work for you. So far, the yolov4-tiny model has not proved accurate enough for me. The default is the full yolo model.
-  
-Check out a demo at: https://youtu.be/q_o1P9zzW1o 
 
 
 
