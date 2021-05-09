@@ -16,9 +16,9 @@ pip instal tqdm
 When you first run this script it will reach out and download the pre-trained YOLO model as well.
 
 After that it's as simple as:
-* `python people-detect.py -d <path to folder>`
+* `python extract-human-segments.py -d <path to folder>`
 * or
-* `python people-detect.py -f <path to file>`
+* `python extract-human-segments.py -f <path to file>`
 
 There are a number of optional flags outlined below.
 
