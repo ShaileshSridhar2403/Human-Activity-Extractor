@@ -1,4 +1,4 @@
-# People-Detector
+# Human-Activity-Extractor
 High level python script that looks at a video or folder of videos and for each video,outputs a single video containing only segments containing people. The main motivation behind this was to be able to remove large amounts of non-useful video from CCTV camera footage.
 
 Huge thanks to humandecoded, whose repository (https://github.com/humandecoded/People-Detector) provided the base structure and code.
