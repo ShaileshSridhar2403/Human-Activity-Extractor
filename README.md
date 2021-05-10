@@ -1,7 +1,7 @@
 # People-Detector
 High level python script that looks at a video or folder of videos and for each video,outputs a single video containing only segments containing people. The main motivation behind this was to be able to remove large amounts of non-useful video from CCTV camera footage.
 
-Huge thanks to humandecoded, whose repository (https://github.com/humandecoded/People-Detector) provided the base structure and code for this one.
+Huge thanks to humandecoded, whose repository (https://github.com/humandecoded/People-Detector) provided the base structure and code.
 
 ## Requirements 
 * First, activate your Python 3.7 virtual env.  Then:
@@ -41,5 +41,9 @@ When run, the script creates a folder `../output`, containing a folder or each v
 
 
 
+
+
+
+https://user-images.githubusercontent.com/29563101/117712502-0f30f200-b1f2-11eb-8d12-a75d597840ad.mp4
 
 
