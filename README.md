@@ -43,7 +43,7 @@ When run, the script creates a folder `../output`, containing a folder or each v
 
 
 
+![ezgif com-gif-maker(1)](https://user-images.githubusercontent.com/29563101/117713270-11e01700-b1f3-11eb-9572-c1ec582666d3.gif)
 
-https://user-images.githubusercontent.com/29563101/117712502-0f30f200-b1f2-11eb-8d12-a75d597840ad.mp4
 
 
