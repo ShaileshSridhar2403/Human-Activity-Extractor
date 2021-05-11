@@ -208,7 +208,7 @@ if __name__ == "__main__":
     parser.add_argument('--frames', type=int, default=10, help='Only examine every nth frame. Default is 10')
     parser.add_argument('--gpu', action='store_true', help='Attempt to run on GPU instead of CPU. Requires Open CV compiled with CUDA enables and Nvidia drivers set up correctly.')
     parser.add_argument('--time_padding',type=int,default=10, help='number of extra seconds of footage to include on either side of an extracted video clip')
-    parser.add_argument('--draw_boxes',action='store_true', help='Include boundng boxes and confidence in the processed video')
+    parser.add_argument('--draw_boxes',action='store_true', help='Include bounding boxes and confidence in the processed video')
     args = vars(parser.parse_args())
 
     # decide which model we'll use, default is 'yolov3', more accurate but takes longer
