@@ -7,7 +7,6 @@ Huge thanks to humandecoded, whose repository (https://github.com/humandecoded/P
 
 The source video for the above demo gif was taken from the public [DCSASS dataset](https://www.kaggle.com/mateohervas/dcsass-dataset)
  
-The above demo video was taken from a public online dataset
 
 ## Requirements 
 * First, activate your Python 3.7 virtual env.  Then:
