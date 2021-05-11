@@ -3,6 +3,12 @@ High level python script that looks at a video or folder of videos and for each 
 
 Huge thanks to humandecoded, whose repository (https://github.com/humandecoded/People-Detector) provided the base structure and code.
 
+![ezgif com-gif-maker(1)](https://user-images.githubusercontent.com/29563101/117713270-11e01700-b1f3-11eb-9572-c1ec582666d3.gif)
+
+The source video for the above demo gif was taken from the public [DCSASS dataset](https://www.kaggle.com/mateohervas/dcsass-dataset)
+ 
+The above demo video was taken from a public online dataset
+
 ## Requirements 
 * First, activate your Python 3.7 virtual env.  Then:
 ```
@@ -34,6 +40,8 @@ The `--gpu` flag tells the code whether to use the gpu configured on the system.
 
 The `--time_padding` flag sets the number of seconds of video to be added before and after a human detected segment
 
+The `--draw_boxes` flag determines whether the bounding boxes for the detections are to be included in the processed video
+
 
 
 When run, the script creates a folder `../output`, containing a folder or each video analyzed. Each such folder contains a 'processed_video.avi' , which  contains all human containing segments identified within the video, and a 'snapshots' folder, containing snapshots of frames(.jpeg format) where humans were found, along with a bounding box and confidence score. 
@@ -43,11 +51,7 @@ When run, the script creates a folder `../output`, containing a folder or each v
 
 
 
-![ezgif com-gif-maker(1)](https://user-images.githubusercontent.com/29563101/117713270-11e01700-b1f3-11eb-9572-c1ec582666d3.gif)
 
-
- 
-The above demo video was taken from a public online dataset
 
 
 
