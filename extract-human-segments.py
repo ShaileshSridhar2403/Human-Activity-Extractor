@@ -7,7 +7,6 @@ import sys
 from datetime import datetime
 from tqdm import tqdm
 
-
 # these will need to be fleshed out to not miss any formats
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.tiff', '.gif']
 VID_EXTENSIONS = ['.mov', '.mp4', '.avi', '.mpg', '.mpeg', '.m4v', '.mkv']
@@ -42,9 +41,16 @@ def process_frame_list(frame_list,frame_range,frame_count,fps,time_padding=10):
     return processed_frame_list
 
 
+def remove_other_labels(bbox,labels,conf):
+    for ind in range(len(labels)-1,-1,-1):
+        if labels[ind] != "person":
+            labels.pop(ind)
+            bbox.pop(ind)
+            conf.pop(ind)
+    return bbox,labels,conf
     
 
-def snip_video_segments_from_frame_list(frame_list,video_file_name,frame_count,save_directory,frame_range,time_padding=10):
+def snip_video_segments_from_frame_list(frame_list,video_file_name,frame_count,save_directory,frame_range,time_padding,frame_dict):
     print("frame_list",frame_list)
     
     vid = cv2.VideoCapture(video_file_name)
@@ -73,7 +79,10 @@ def snip_video_segments_from_frame_list(frame_list,video_file_name,frame_count,s
             except Exception as e:
                 print(f"Error {e}, unable to read frame number {frame_number}")
                 continue
-            out.write(frame)
+            if frame_number in frame_dict:
+                out.write(frame_dict[frame_number])
+            else:
+                out.write(frame)
         frame_range_count +=1
     out.release()
     print("video saved to",video_file_path)
@@ -83,10 +92,11 @@ def snip_video_segments_from_frame_list(frame_list,video_file_name,frame_count,s
 
 # function takes a file name(full path), checks that file for human shaped objects
 # saves the frames with people detected into directory named 'save_directory'
-def humanChecker(video_file_name, save_directory, yolo='yolov4', nth_frame=20, confidence=0.65, gpu=False,time_padding=10):
+def humanChecker(video_file_name, save_directory, yolo='yolov4', nth_frame=20, confidence=0.65, gpu=False,time_padding=10,boxes_flag= False):
     # save_directory_2 = os.path.join()
     # for modifying our global variarble VALID_FILE
     global VALID_FILE_ALERT
+    frame_dict = {}
 
     # tracking if we've found a human or not
     is_human_found = False
@@ -139,6 +149,7 @@ def humanChecker(video_file_name, save_directory, yolo='yolov4', nth_frame=20, c
             if os.path.splitext(video_file_name)[1] not in IMG_EXTENSIONS:
                 vid.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
                 _, frame = vid.read()
+                frame_dict[frame_number] = frame
 
             # feed our frame (or image) in to detect_common_objects
             try:
@@ -154,14 +165,16 @@ def humanChecker(video_file_name, save_directory, yolo='yolov4', nth_frame=20, c
                 is_human_found = True
 
                 # create image with bboxes showing people and then save
+                bbox,labels,conf = remove_other_labels(bbox,labels,conf)
                 marked_frame = cvlib.object_detection.draw_bbox(frame, bbox, labels, conf, write_conf=True)
                 save_file_name = os.path.basename(os.path.splitext(video_file_name)[0]) + '-' + str(person_detection_counter) + '.jpeg'
                 cv2.imwrite(save_directory + '/snapshots/' + save_file_name , marked_frame)
                 frame_number_list.append(frame_number)
-                
+        if not boxes_flag:
+            frame_dict = {}  
 
     if is_valid and person_detection_counter > 0:
-        snip_video_segments_from_frame_list(frame_number_list,video_file_name,frame_count,save_directory,nth_frame,time_padding=time_padding)
+        snip_video_segments_from_frame_list(frame_number_list,video_file_name,frame_count,save_directory,nth_frame,time_padding=time_padding,frame_dict=frame_dict)
     return is_human_found, analyze_error
 
 
@@ -195,7 +208,7 @@ if __name__ == "__main__":
     parser.add_argument('--frames', type=int, default=10, help='Only examine every nth frame. Default is 10')
     parser.add_argument('--gpu', action='store_true', help='Attempt to run on GPU instead of CPU. Requires Open CV compiled with CUDA enables and Nvidia drivers set up correctly.')
     parser.add_argument('--time_padding',type=int,default=10, help='number of extra seconds of footage to include on either side of an extracted video clip')
-
+    parser.add_argument('--draw_boxes',action='store_true', help='Include boundng boxes and confidence in the processed video')
     args = vars(parser.parse_args())
 
     # decide which model we'll use, default is 'yolov3', more accurate but takes longer
@@ -221,6 +234,10 @@ if __name__ == "__main__":
     gpu_flag = False
     if args['gpu']:
         gpu_flag = True
+    
+    boxes_flag= False
+    if args['draw_boxes']:
+        boxes_flag = True
     
     time_padding = args['time_padding']
 
@@ -253,7 +270,7 @@ if __name__ == "__main__":
             working_on_counter +=1
             continue
         # check for people
-        human_detected, error_detected =  humanChecker(str(video_file), custom_save_dir, yolo=yolo_string, nth_frame=every_nth_frame, confidence=confidence_percent, gpu=gpu_flag,time_padding=time_padding)
+        human_detected, error_detected =  humanChecker(str(video_file), custom_save_dir, yolo=yolo_string, nth_frame=every_nth_frame, confidence=confidence_percent, gpu=gpu_flag,time_padding=time_padding,boxes_flag = boxes_flag)
             
         if human_detected:    
             HUMAN_DETECTED_ALERT = True
