@@ -37,7 +37,7 @@ The `--confidence n`  flag will adjust the confidence threshold for YOLO that tr
 
 The `--gpu` flag tells the code whether to use the gpu configured on the system. If no gpu is found, falls back to cpu.
 
-The `--time_padding` flag sets the number of seconds of video to be added before and after a human detected segment
+The `--time_padding` flag sets the number of seconds of video to be added before and after a human detected segment.Default is 10
 
 The `--draw_boxes` flag determines whether the bounding boxes for the detections are to be included in the processed video
 
