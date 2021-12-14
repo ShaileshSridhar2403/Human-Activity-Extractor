@@ -30,8 +30,8 @@ After that it's as simple as:
 
 There are a number of optional flags outlined below.
 
-The default ML model is 'yolov4'. This model is big and CPU intensive. The `--tiny_yolo` flag will give you the smaller model that is faster but less accurate.
-In my experience tiny yolo is generally adequate,as the code pads all human containing segments with a small amount of extra video, generally making up for any missed detections. Experimentation in the user's specific conditions is advised, however.
+The default ML model is 'yolov4'. This model is big and CPU intensive. The `--tiny_yolo` flag will give you a smaller model that is faster but less accurate.
+In my experience tiny yolo is generally adequate,as the code pads all human containing segments with a small amount of extra video, generally making up for any missed detections. Experimentation with the user's specific conditions is advised, however.
 
 
 The `--frames n`  flag sets the program to examine every `n`th frame. The default is every 10th frame.
